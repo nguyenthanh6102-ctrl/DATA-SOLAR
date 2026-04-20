@@ -194,10 +194,9 @@ tbody tr:hover td{background:rgba(255,255,255,.022)}
   <div class="pg-hdr"><span class="pg-title">INVERTER</span><span class="pg-sub">Tất cả hãng · ✏ Sửa inline · ✕ Xóa · + Thêm mới</span></div>
   <div class="filter-bar">
     <span class="flbl">Hãng:</span>
-    <button class="fbtn on" onclick="IF('brand','ALL',this)">Tất cả</button>
-    <button class="fbtn" onclick="IF('brand','DEYE',this)">DEYE</button>
-    <button class="fbtn" onclick="IF('brand','SOLIS',this)">SOLIS</button>
-    <button class="fbtn" onclick="IF('brand','AUXSOL',this)">AUXSOL</button>
+    <span id="inv-brand-filters">
+      <button class="fbtn on" onclick="IF('brand','ALL',this)">Tất cả</button>
+    </span>
     <div class="fsep"></div>
     <span class="flbl">Loại:</span>
     <button class="fbtn on" onclick="IF('type','ALL',this)">Tất cả</button>
@@ -226,8 +225,9 @@ tbody tr:hover td{background:rgba(255,255,255,.022)}
   <div class="pg-hdr"><span class="pg-title">PV PANEL</span><span class="pg-sub">Tất cả hãng · ✏ Sửa inline · + Thêm mới</span></div>
   <div class="filter-bar">
     <span class="flbl">Hãng:</span>
-    <button class="fbtn on" onclick="PF('ALL',this)">Tất cả</button>
-    <button class="fbtn" onclick="PF('JINKO',this)">JINKO</button>
+    <span id="pv-brand-filters">
+      <button class="fbtn on" onclick="PF('ALL',this)">Tất cả</button>
+    </span>
   </div>
   <div class="tbl-wrap tbl-scroll">
     <table><thead><tr>
@@ -284,11 +284,7 @@ tbody tr:hover td{background:rgba(255,255,255,.022)}
     <div class="sel-blk-t">Bước 1 — Chọn Inverter</div>
     <div class="sel-row">
       <div class="sel-grp"><div class="sel-lbl">Hãng</div>
-        <div class="sbtns" id="sg-br">
-          <button class="sopt" onclick="sB('DEYE',this)">DEYE</button>
-          <button class="sopt" onclick="sB('SOLIS',this)">SOLIS</button>
-          <button class="sopt" onclick="sB('AUXSOL',this)">AUXSOL</button>
-        </div>
+        <div class="sbtns" id="sg-br"></div>
       </div>
       <div class="sel-grp"><div class="sel-lbl">Loại</div>
         <div class="sbtns" id="sg-ty">
@@ -444,6 +440,7 @@ function ST(id,btn){
   btn.classList.add('active');
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+id).classList.add('active');
+  if(id==='sel') rebuildSelBrandBtns();
 }
 
 // ════════ UNDO ════════
@@ -459,8 +456,8 @@ function doUndo(){
   if(!undoStk)return;
   clearTimeout(undoTmr);
   const t=undoStk.type;
-  if(t==='inv'){DB.inv=undoStk.data;rInv();}
-  else if(t==='pv'){DB.pv=undoStk.data;rPV();}
+  if(t==='inv'){DB.inv=undoStk.data;rInv();rebuildInvBrandFilters();rebuildSelBrandBtns();}
+  else if(t==='pv'){DB.pv=undoStk.data;rPV();rebuildPVBrandFilters();}
   else if(t==='pvc'){DB.pvc=undoStk.data;rCable('pvc');}
   else if(t==='xlpe'){DB.xlpe=undoStk.data;rCable('xlpe');}
   save();undoStk=null;
@@ -518,7 +515,7 @@ function eInv(id){
   const d=DB.inv.find(x=>x.id===id);if(!d)return;
   const er=document.createElement('tr');er.className='edit-row';er.id='ie-'+id;
   er.innerHTML=`
-    <td><select class="ei ei-sel eiw2" id="eb-${id}"><option ${d.brand==='DEYE'?'selected':''}>DEYE</option><option ${d.brand==='SOLIS'?'selected':''}>SOLIS</option><option ${d.brand==='AUXSOL'?'selected':''}>AUXSOL</option></select></td>
+    <td><input class="ei eiw2" id="eb-${id}" value="${d.brand}" list="inv-brand-list" placeholder="Hãng"></td>
     <td><input class="ei" id="em-${id}" value="${d.model}" style="min-width:155px"></td>
     <td><select class="ei ei-sel eiw" id="et-${id}"><option value="ongrid" ${d.type==='ongrid'?'selected':''}>Hòa lưới</option><option value="hybrid" ${d.type==='hybrid'?'selected':''}>Hybrid</option></select></td>
     <td><select class="ei ei-sel eiw2" id="ep-${id}"><option value="1" ${d.phase==='1'?'selected':''}>1 pha</option><option value="3" ${d.phase==='3'?'selected':''}>3 pha</option></select></td>
@@ -553,14 +550,14 @@ function sInv(id){
   d.acI=parseFloat(document.getElementById('eai-'+id).value)||null;
   d.acB=parseFloat(document.getElementById('eab-'+id).value)||null;
   if(!d.acI)d.acI=null;if(!d.acB)d.acB=null;
-  save();rInv();showUndo('Đã lưu inverter','inv',snap);
+  save();rInv();rebuildInvBrandFilters();rebuildSelBrandBtns();showUndo('Đã lưu inverter','inv',snap);
 }
 function dInv(id){
   const d=DB.inv.find(x=>x.id===id);
   const inUse=sel.inv&&sel.inv.id===id;
   showConf('Xác nhận xóa',`Xóa "${d.model}"?${inUse?' ⚠ Đang được dùng trong Chọn thiết bị.':''}`,()=>{
     const snap=cl(DB.inv);DB.inv=DB.inv.filter(x=>x.id!==id);
-    save();rInv();if(inUse)resetSel();
+    save();rInv();rebuildInvBrandFilters();rebuildSelBrandBtns();if(inUse)resetSel();
     showUndo(`Đã xóa "${d.model}"`,'inv',snap);
   });
 }
@@ -569,7 +566,7 @@ function addInv(){
   const tb=document.getElementById('itb');const nid=uid();
   const er=document.createElement('tr');er.className='edit-row';er.id='ie-'+nid;
   er.innerHTML=`
-    <td><select class="ei ei-sel eiw2" id="eb-${nid}"><option>DEYE</option><option>SOLIS</option><option>AUXSOL</option></select></td>
+    <td><input class="ei eiw2" id="eb-${nid}" placeholder="Hãng" list="inv-brand-list"></td>
     <td><input class="ei" id="em-${nid}" placeholder="Model" style="min-width:155px"></td>
     <td><select class="ei ei-sel eiw" id="et-${nid}"><option value="ongrid">Hòa lưới</option><option value="hybrid">Hybrid</option></select></td>
     <td><select class="ei ei-sel eiw2" id="ep-${nid}"><option value="1">1 pha</option><option value="3">3 pha</option></select></td>
@@ -604,7 +601,7 @@ function saveAddInv(nid){
   };
   if(!d.acI)d.acI=null;if(!d.acB)d.acB=null;
   if(!d.model){alert('Nhập Model');return;}
-  DB.inv.push(d);save();rInv();showUndo(`Đã thêm "${d.model}"`,'inv',snap);
+  DB.inv.push(d);save();rInv();rebuildInvBrandFilters();rebuildSelBrandBtns();showUndo(`Đã thêm "${d.model}"`,'inv',snap);
 }
 
 // ════════ PV RENDER ════════
@@ -633,7 +630,7 @@ function ePV(id){
   const d=DB.pv.find(x=>x.id===id);
   const er=document.createElement('tr');er.className='edit-row';er.id='pe-'+id;
   er.innerHTML=`
-    <td><select class="ei ei-sel eiw2" id="pbr-${id}"><option>JINKO</option></select></td>
+    <td><input class="ei eiw2" id="pbr-${id}" value="${d.brand}" list="pv-brand-list" placeholder="Hãng"></td>
     <td><input class="ei" id="pmo-${id}" value="${d.model}" style="min-width:140px"></td>
     <td><input class="ei eiw" id="pwp-${id}" type="number" value="${d.wp}"></td>
     <td><input class="ei eiw" id="pvc-${id}" type="number" value="${d.voc}"></td>
@@ -659,14 +656,14 @@ function sPV2(id){
   d.imp=parseFloat(document.getElementById('pim-'+id).value)||0;
   d.vsys=parseFloat(document.getElementById('pvs-'+id).value)||0;
   d.fuse=parseFloat(document.getElementById('pfu-'+id).value)||0;
-  save();rPV();showUndo('Đã lưu PV panel','pv',snap);
+  save();rPV();rebuildPVBrandFilters();showUndo('Đã lưu PV panel','pv',snap);
 }
 function dPV(id){
   const d=DB.pv.find(x=>x.id===id);
   const inUse=sel.pv&&sel.pv.id===id;
   showConf('Xác nhận xóa',`Xóa "${d.model}"?${inUse?' ⚠ Đang được chọn.':''}`,()=>{
     const snap=cl(DB.pv);DB.pv=DB.pv.filter(x=>x.id!==id);
-    save();rPV();if(inUse)sel.pv=null;
+    save();rPV();rebuildPVBrandFilters();if(inUse)sel.pv=null;
     showUndo(`Đã xóa "${d.model}"`,'pv',snap);
   });
 }
@@ -675,7 +672,7 @@ function addPV(){
   const tb=document.getElementById('ptb');const nid=uid();
   const er=document.createElement('tr');er.className='edit-row';er.id='pe-'+nid;
   er.innerHTML=`
-    <td><select class="ei ei-sel eiw2" id="pbr-${nid}"><option>JINKO</option></select></td>
+    <td><input class="ei eiw2" id="pbr-${nid}" placeholder="Hãng" list="pv-brand-list"></td>
     <td><input class="ei" id="pmo-${nid}" placeholder="Model" style="min-width:140px"></td>
     <td><input class="ei eiw" id="pwp-${nid}" type="number" placeholder="Wp"></td>
     <td><input class="ei eiw" id="pvc-${nid}" type="number" placeholder="V"></td>
@@ -698,7 +695,7 @@ function saveAddPV(nid){
     imp:parseFloat(document.getElementById('pim-'+nid).value)||0,vsys:parseFloat(document.getElementById('pvs-'+nid).value)||0,
     fuse:parseFloat(document.getElementById('pfu-'+nid).value)||0};
   if(!d.model){alert('Nhập Model');return;}
-  DB.pv.push(d);save();rPV();showUndo(`Đã thêm "${d.model}"`,'pv',snap);
+  DB.pv.push(d);save();rPV();rebuildPVBrandFilters();showUndo(`Đã thêm "${d.model}"`,'pv',snap);
 }
 
 // ════════ CABLE RENDER ════════
@@ -976,8 +973,67 @@ function resetSel(){
   gS(1);
 }
 
+// ════════ DYNAMIC BRAND MANAGEMENT ════════
+
+// Get unique sorted brands from DB
+function invBrands(){ return [...new Set(DB.inv.map(d=>d.brand))].sort(); }
+function pvBrands(){  return [...new Set(DB.pv.map(d=>d.brand))].sort(); }
+
+// Rebuild inverter brand filter buttons (keeps Tất cả + active state)
+function rebuildInvBrandFilters(){
+  const cur = INV_F.brand;
+  const wrap = document.getElementById('inv-brand-filters');
+  wrap.innerHTML = `<button class="fbtn${cur==='ALL'?' on':''}" onclick="IF('brand','ALL',this)">Tất cả</button>`;
+  invBrands().forEach(b=>{
+    const btn = document.createElement('button');
+    btn.className='fbtn'+(cur===b?' on':'');
+    btn.textContent=b;
+    btn.onclick=function(){IF('brand',b,this);};
+    wrap.appendChild(btn);
+  });
+  // also rebuild datalist
+  let dl = document.getElementById('inv-brand-list');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='inv-brand-list'; document.body.appendChild(dl); }
+  dl.innerHTML = invBrands().map(b=>`<option value="${b}">`).join('');
+}
+
+// Rebuild PV brand filter buttons
+function rebuildPVBrandFilters(){
+  const cur = PV_F;
+  const wrap = document.getElementById('pv-brand-filters');
+  wrap.innerHTML = `<button class="fbtn${cur==='ALL'?' on':''}" onclick="PF('ALL',this)">Tất cả</button>`;
+  pvBrands().forEach(b=>{
+    const btn = document.createElement('button');
+    btn.className='fbtn'+(cur===b?' on':'');
+    btn.textContent=b;
+    btn.onclick=function(){PF(b,this);};
+    wrap.appendChild(btn);
+  });
+  let dl = document.getElementById('pv-brand-list');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='pv-brand-list'; document.body.appendChild(dl); }
+  dl.innerHTML = pvBrands().map(b=>`<option value="${b}">`).join('');
+}
+
+// Rebuild brand buttons in Selector Step 1
+function rebuildSelBrandBtns(){
+  const wrap = document.getElementById('sg-br');
+  const cur = sel.brand;
+  wrap.innerHTML='';
+  invBrands().forEach(b=>{
+    const btn=document.createElement('button');
+    btn.className='sopt'+(cur===b?' on':'');
+    btn.textContent=b;
+    btn.onclick=function(){sB(b,this);};
+    wrap.appendChild(btn);
+  });
+}
+
 // ════════ INIT ════════
-loadDB();rInv();rPV();rCable('pvc');rCable('xlpe');
+loadDB();
+rebuildInvBrandFilters();
+rebuildPVBrandFilters();
+rebuildSelBrandBtns();
+rInv();rPV();rCable('pvc');rCable('xlpe');
 </script>
 </body>
 </html>
